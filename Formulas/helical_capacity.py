@@ -10,6 +10,7 @@ stiffness = 29000000
 
 #CPT Indices
 #{soil type:Ic)
+# Soil Type 1: Sand, Soil Type 2: Silt, Soil Type 3: Clay
 cpt_index = {1:3.02,
              2:2.68,
              3:1.27}
@@ -17,6 +18,7 @@ cpt_index = {1:3.02,
 # coefficients for calculating soil weight for soil types
 # structure: {soil_type:[[coeffs for water_table < depth],[coeffs for water_table >= depth]],...}
 #            coeffs for water table < or >= depth: min(c1 + c2 * spt + c3, c4)
+#Soil Type 1: Clay, Soil Type 2: Silt, Soil Type 3: Sand -- No consistent with soil type with CPT
 soil_weight_coeffs = {1:[[28,0.87,135],[92,0.85,135]],
                             2:[[49,0.48,135],[76,1.2,135]],
                             3:[[50,0.46,135],[80,1.1,135]]}
@@ -28,15 +30,16 @@ phi_coeffs = {3:[27,0.3]}
 
 # coefficients for calculating Cohesion
 # structure: {soil_type: [c1]}
+# Soil Type 1: Clay, Soil Type 2: Clay, Soil Type 3: Sand
 cohesion_coeffs = {1:[125],
                    2:[125],
                    3:[1]}
 
 # coefficients for calculating q
-# usaed for clay and silt
+# used for clay and silt
 # structure: [[single][double][triple]]
 #  (A - area, calculated as: pi / 4 * (helix_diameter / 12)^2)
-# single:    A * (c0 - c1  * LN( spt )) * c2  * spt
+# single:    A * (c0 - c1  * LN( spt )) * c2  * spt/comp_safety_factor
 #   example: A * (helix_diameter / 12) ^ 2  * (14 - 1.7 * LN( spt )) * 125 * spt
 # double:    (A1 * c0  * spt * (c1 - c2  * ln(spt)) + c3   * A2 * c4  * spt * (c5 - c6  * ln(spt))) / tension_load_sf
 #   example: (A1 * 125 * spt * (14 - 1.7 * ln(spt)) + 0.75 * A2 * 125 * spt * (14 - 1.7 * ln(spt))) / tension_load_sf
