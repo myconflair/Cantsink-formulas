@@ -3,7 +3,7 @@
 import math as m
 from numpy import interp # needed for interpolation in calculating settlement
 
-pi = 3.14
+pi = 3.14159
 
 # Material stiffness (Young's modulus)
 stiffness = 29000000
@@ -39,12 +39,12 @@ cohesion_coeffs = {1:[125],
 # used for clay and silt
 # structure: [[single][double][triple]]
 #  (A - area, calculated as: pi / 4 * (helix_diameter / 12)^2)
-# single:    A * (c0 - c1  * LN( spt )) * c2  * spt/comp_safety_factor
-#   example: A * (helix_diameter / 12) ^ 2  * (14 - 1.7 * LN( spt )) * 125 * spt
-# double:    (A1 * c0  * spt * (c1 - c2  * ln(spt)) + c3   * A2 * c4  * spt * (c5 - c6  * ln(spt))) / tension_load_sf
-#   example: (A1 * 125 * spt * (14 - 1.7 * ln(spt)) + 0.75 * A2 * 125 * spt * (14 - 1.7 * ln(spt))) / tension_load_sf
-# triple:    (A1 * c0  * spt * (c1 - c2  * ln(spt)) + c3   * A2 * c4  * spt * (c5 - c6  * ln(spt)) + c7  * A3 * c8  - c9  * ln(spt))) / tension_load_sf
-# # example: (A1 * 125 * spt * (14 - 1.7 * ln(spt)) + 0.75 * A2 * 125 * spt * (14 - 1.7 * ln(spt)) + 0.5 * A3 * (14 - 1.7 * ln(spt))) / tension_load_sf
+# single:    (A * (c0 - c1  * LN( spt )) * c2  * spt)/comp_safety_factor
+#   example: (A * (helix_diameter / 12) ^ 2  * (14 - 1.7 * LN( spt )) * 125 * spt)/2
+# double:    (A1 * c0  * spt * (c1 - c2  * ln(spt)) + c3   * A2 * c4  * spt * (c5 - c6  * ln(spt))) / comp_load_sf
+#   example: (A1 * 125 * spt * (14 - 1.7 * ln(spt)) + 0.75 * A2 * 125 * spt * (14 - 1.7 * ln(spt))) / comp_load_sf
+# triple:    (A1 * c0  * spt * (c1 - c2  * ln(spt)) + c3   * A2 * c4  * spt * (c5 - c6  * ln(spt)) + c7  * A3 * c8  - c9  * ln(spt))) / comp_load_sf
+# # example: (A1 * 125 * spt * (14 - 1.7 * ln(spt)) + 0.75 * A2 * 125 * spt * (14 - 1.7 * ln(spt)) + 0.5 * A3 * (14 - 1.7 * ln(spt))) / comp_load_sf
 # sand:
 q_coeffs = [[14,1.7,125],
             [125,14,1.7,0.75,125,14,1.7],
@@ -226,7 +226,11 @@ class Project():
                  name, number, city, state_province, date, boring_number,
                  water_table, soil_study_type):
 
-        self.shaft = shaft
+        if shaft == 1.5:
+            self.shaft = 1.67
+        else:
+            self.shaft = shaft
+
         self.comp_load = comp_load
         self.comp_load_sf = comp_load_sf
         self.tension_load = tension_load
@@ -274,7 +278,7 @@ project = Project(shaft, comp_load, comp_load_sf, tension_load, tension_load_sf,
 # calculates helix area
 # formula: pi / 4 * (helix_diameter / 12)^2
 def calculate_helix_area(helix_diameter):
-    return pi /4 *((helix_diameter / 12)**2)
+    return pi / 4 *((helix_diameter / 12)**2)
 #I corrected the formula for the area of the helix, it was correct in the comment but incorrect in the actual calculation
 
 
@@ -291,9 +295,6 @@ def calculate_fq(phi, d, helix_diameter, fq_table):
             return fq_table[phi][hd]
         else:
             return -1
-#Why if hd is not found on fq_table the return is -1
-          else:
-        return -1
 
 
 
