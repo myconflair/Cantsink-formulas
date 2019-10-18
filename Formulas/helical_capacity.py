@@ -274,8 +274,8 @@ project = Project(shaft, comp_load, comp_load_sf, tension_load, tension_load_sf,
 # calculates helix area
 # formula: pi / 4 * (helix_diameter / 12)^2
 def calculate_helix_area(helix_diameter):
-    return pi / (4 * ((helix_diameter / 12)**2))
-
+    return pi /4 *((helix_diameter / 12)**2)
+#I corrected the formula for the area of the helix, it was correct in the comment but incorrect in the actual calculation
 
 
 # d - depth
@@ -291,7 +291,8 @@ def calculate_fq(phi, d, helix_diameter, fq_table):
             return fq_table[phi][hd]
         else:
             return -1
-    else:
+#Why if hd is not found on fq_table the return is -1
+          else:
         return -1
 
 
