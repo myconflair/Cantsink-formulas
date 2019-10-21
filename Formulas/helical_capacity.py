@@ -10,7 +10,7 @@ stiffness = 29000000
 
 #CPT Indices
 #{soil type:Ic)
-# Soil Type 1: Sand, Soil Type 2: Silt, Soil Type 3: Clay
+# Soil Type 1: Clay, Soil Type 2: Silt, Soil Type 3: Sand
 cpt_index = {1:3.02,
              2:2.68,
              3:1.27}
@@ -88,45 +88,48 @@ fq_table = {25:{0.5:3.9525,1:5.055,1.5:6.3075,2:7.7025,2.5:9.2475,3:10.95,3.5:10
 
 # depth_records - data associated with depth layers
 # structure: {depth:[soil_type,tsf]}, where depth is in ft, type - soil type
-# after running calculate_soil_weight - structure: {depth:[soil_type,tsf,wt]}
+# after running calculate_soil_weight - structure: {depth:[soil_type,SPT]}
+#  note: the user enters for the SPT:
+#                                  if soil study type is CPT - TSF value
+#                                  if soil study type is SPT - SPT60 or SPT80 value
 depth_records = {
-1:[1,55],
-2:[1,55],
-3:[1,2],
-4:[3,55],
-5:[3,55],
-6:[3,55],
-7:[3,55],
-8:[3,55],
-9:[3,55],
-10:[3,55],
-11:[3,55],
-12:[3,2],
-13:[2,2],
-14:[2,2],
-15:[2,2],
-16:[2,2],
-17:[2,4],
-18:[2,4],
-19:[2,4],
-20:[2,4],
-21:[2,4],
-22:[2,4],
-23:[2,4],
-24:[2,4],
-25:[2,4],
-26:[2,4],
-27:[2,4],
-28:[2,4],
-29:[2,4],
-30:[2,4],
-31:[2,4],
-32:[2,4],
-33:[2,4],
-34:[2,4],
-35:[2,4],
-36:[2,4],
-37:[2,4],
+1:[1,8],
+2:[1,9],
+3:[1,10],
+4:[3,11],
+5:[3,12],
+6:[3,12],
+7:[3,12],
+8:[3,12],
+9:[3,12],
+10:[3,12],
+11:[3,12],
+12:[3,15],
+13:[3,15],
+14:[3,15],
+15:[3,15],
+16:[3,15],
+17:[3,15],
+18:[3,15],
+19:[3,15],
+20:[3,15],
+21:[3,15],
+22:[3,15],
+23:[3,15],
+24:[3,15],
+25:[3,15],
+26:[3,15],
+27:[3,15],
+28:[3,15],
+29:[3,15],
+30:[3,15],
+31:[3,15],
+32:[3,15],
+33:[3,15],
+34:[3,15],
+35:[3,15],
+36:[3,15],
+37:[3,15],
 38:[3,25],
 39:[3,25],
 40:[3,25],
@@ -192,8 +195,10 @@ class DepthRecord():
             return -1
 
         self.soil_study_type = Project.soil_study_type
-        if self.soil_study_type.lower() == 'spt':
+        if self.soil_study_type.lower() == 'sptn60':
             self.spt = depth_records[self.depth][1]
+        elif self.soil_study_type.lower() == 'sptn80':
+            self.spt = depth_records[self.depth][1] * 4 / 3
         elif self.soil_study_type.lower() == 'cpt':
             Ic = cpt_index[self.soil_type]
             self.spt = depth_records[self.depth][1] / (8.5 * (1 - (Ic / 4.75)))
@@ -220,6 +225,7 @@ class DepthRecord():
 
 
 # data defined at the project level
+# Soil study type: CPT, SPTN60, SPTN80
 class Project():
 
     def __init__(self, shaft, comp_load, comp_load_sf, tension_load, tension_load_sf, height_above_grade,
@@ -248,8 +254,8 @@ class Project():
 
 # TEST ################################################################################################
 
-shaft               = 1.5
-comp_load           = 1500
+shaft               = 2.88
+comp_load           = 5000
 comp_load_sf        = 2
 tension_load        = 0
 tension_load_sf     = 2
@@ -261,7 +267,7 @@ state_province      = 'GA'
 date                = '2019-10-05'
 boring_number       = 1
 water_table         = 45
-soil_study_type     = 'SPT'
+soil_study_type     = 'SPTN60' # values: CPT, SPTN60, SPTN80
 
 project = Project(shaft, comp_load, comp_load_sf, tension_load, tension_load_sf, height_above_grade, name, number, city, state_province, date, boring_number, water_table, soil_study_type)
 
@@ -301,9 +307,12 @@ def calculate_fq(phi, d, helix_diameter, fq_table):
 def round_to_half(number):
     return round(number * 2) / 2
 
-
-
 def calculate_pile_length(helices, Project):
+
+    wt2 = 0
+    wt3 = 0
+    fq = 0
+
     # Pile length
     for h in helices: # for all helix diameters
 
@@ -321,6 +330,11 @@ def calculate_pile_length(helices, Project):
         print(f'areas: {areas}')
 
         for d in sorted(depth_records): #for all depths
+
+            wt2 = 0
+            wt3 = 0
+
+            # this is always the depth of the bottom, i.e., at the tip
 
             # if DepthRecord for a depth does not exist - create
             # Append to depth_records 1:[1,55] --> 1:[1,55, DepthRecord]
@@ -365,23 +379,47 @@ def calculate_pile_length(helices, Project):
                 if fq == -1:
                     print(f'Failed to calculate fq for phi=[{dr.phi}]')
 
-                q = areas[0] * fq
+                q = areas[0] * dr.soil_weight * fq
 
                 # double helix
                 if num_h > 1:
-                    fq = calculate_fq(dr.phi, d, ds[1], fq_table)
-                    if fq == -1:
-                        print(f'Failed to calculate fq for phi=[{dr.phi}]')
-                    q = q + areas[1] * fq
+
+                    # perform calculation for the second helix only if the current depth is greater than
+                    # three times the diameter of the first helix
+                    if d > round(3 * (ds[0] / 12)):
+
+                        fq = calculate_fq(dr.phi, d, ds[1], fq_table)
+                        if fq == -1:
+                            print(f'Failed to calculate fq for phi=[{dr.phi}]')
+
+                        # calucate the depth of the second helix
+                        d = d - round(3 * (ds[0] / 12))
+
+                        # obtain the weight of the layer for the second helix
+                        wt2 = (depth_records[d][2]).soil_weight
+
+                        q = q + areas[1] * wt2 * fq
 
                 # triple helix
                 if num_h > 2:
-                    fq = calculate_fq(dr.phi, d, ds[2], fq_table)
-                    if fq == -1:
-                        print(f'Failed to calculate fq for phi=[{dr.phi}]')
-                    q = q + areas[2] * fq
 
-                q = (q * dr.soil_weight) / Project.comp_load_sf
+                    # perform calculation for the third helix only if the current depth is greater than
+                    # three times the diameter of the first helix plus three times the diameter of the seond helix
+                    if d > (round(3 * (ds[0] / 12)) + round(3 * (ds[1] / 12))):
+
+                        fq = calculate_fq(dr.phi, d, ds[2], fq_table)
+                        if fq == -1:
+                            print(f'Failed to calculate fq for phi=[{dr.phi}]')
+
+                        # calucate the depth of the second helix
+                        d = d - round(3 * (ds[1] / 12))
+
+                        # obtain the weight of the layer for the second helix
+                        wt3 = (depth_records[d][2]).soil_weight
+
+                        q = q + areas[2] * wt3 * fq
+
+                q = q / Project.comp_load_sf
 
             else:
                 return -1
@@ -440,6 +478,11 @@ def calculate_pile_length(helices, Project):
 
                 # specify total settlement (ts) at the bottom
                 print(f'Total settlement: {ts}')
+
+                print(f'fq: {fq}')
+                print(f'Soil weight - helix 1: {dr.soil_weight}')
+                print(f'Soil weight - helix 2: {wt2}')
+                print(f'Soil weight - helix 3: {wt3}')
 
                 break
         # (for deapth records)
