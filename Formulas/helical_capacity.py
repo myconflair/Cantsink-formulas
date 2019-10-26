@@ -217,6 +217,18 @@ class DepthRecord():
         else:
             self.phi = 0
 
+        # Calculate Es (soil modulus)
+        # soil type: 1 - clay, 2 - silt, 3 - sand
+        if self.soil_type == 3: # sand
+            if self.depth > Project.water_table:
+                self.Es = 500 * (15 + self.spt) * 20.89
+            else:
+                self.Es = 250 * (15 + self.spt) * 20.89
+        elif self.soil_type == 2: #silt
+            self.Es = 300 * (6 + self.spt) * 20.89
+        else: #clay
+            self.Es = 100 * 125 * self.spt
+
         # calculate Cohesion
         if self.soil_type == 3:
             self.cohesion = cohesion_coeffs[self.soil_type][0]
@@ -306,6 +318,28 @@ def calculate_fq(phi, d, helix_diameter, fq_table):
 
 def round_to_half(number):
     return round(number * 2) / 2
+
+
+
+# calculated the number of feet thatg should be added to the depth
+# when calculating pile length below ground
+# to acocunt for the space between helices
+def calc_add_depth_for_mult_helix(ds, num_h):
+
+    dss = ds.copy()
+
+    if num_h == 1:
+        return 0
+    dss.sort()
+
+    dss.pop(num_h-1)
+
+    add_d = 0
+    for d in dss:
+        add_d += d * 3 / 12
+    return add_d
+
+
 
 def calculate_pile_length(helices, Project):
 
@@ -426,7 +460,7 @@ def calculate_pile_length(helices, Project):
 
             # Calculate total settlement settlement (ts)
 
-            # calculate nu
+            # calculate nu (Poissone's ratio) for soil
             if dr.soil_type == 1:
                 if d < Project.water_table:
                     nu = 0.3
@@ -441,7 +475,8 @@ def calculate_pile_length(helices, Project):
                 nu = 0.2
 
             # calculate D (av2) - stress and strain
-            av2 = (stiffness * (0.56**3)) / (12 * (1 - nu**2))
+            nu_steel = 0.3
+            av2 = (stiffness * (0.56**3)) / (12 * (1 - nu_steel**2))
 
             av1 = (0.25 + Project.shaft / 2) / (Project.shaft / 2)
             kc = interp(av1, ba, ky)
@@ -452,7 +487,7 @@ def calculate_pile_length(helices, Project):
             helix_flex = (((kc * Project.comp_load * Project.comp_load_sf) / (max_area * av2)) * ((Project.shaft / 2 + 0.25) ** 4))/num_h
 
             # calculate helix_tip (tip settlement)
-            helix_tip = (pi/4) * Project.comp_load * Project.comp_load_sf * (1 - nu**2) * 0.85 * 12
+            helix_tip = (pi/4) * Project.comp_load * Project.comp_load_sf / dr.Es * (1 - nu**2) * 0.85 * 12
 
             # Shaft area
             if Project.shaft in shaft_areas.keys():
@@ -469,7 +504,14 @@ def calculate_pile_length(helices, Project):
             # (calculate settlement)
 
             # plot the pile above grade - height_above_grade
-            if (q > Project.comp_load and q > Project.tension_load) and (d > (max(ds)/12 * 5)):
+
+            #print(f'Depth: {d}')
+            #print(f'Max helix diameter: {max(ds)/12}')
+
+            # calculate additional depth to accommodate the distances between helices
+            depth_hs = calc_add_depth_for_mult_helix(ds, num_h)
+            #print(f'depth to add for helices:{depth_hs}')
+            if (q > Project.comp_load and q > Project.tension_load) and (d > (max(ds)/12 * 5 + depth_hs + 1)):
 
                 print(f'q: {q}')
 
@@ -477,12 +519,15 @@ def calculate_pile_length(helices, Project):
                 print(f'plot pile below grade: {d}')
 
                 # specify total settlement (ts) at the bottom
-                print(f'Total settlement: {ts}')
+                #print(f'Total settlement: {ts}')
 
-                print(f'fq: {fq}')
-                print(f'Soil weight - helix 1: {dr.soil_weight}')
-                print(f'Soil weight - helix 2: {wt2}')
-                print(f'Soil weight - helix 3: {wt3}')
+                #print(f'helix flex: {helix_flex}')
+                #print(f'helix_tip: {helix_tip}')
+                #print(f'elastic shortening: {es}')
+                #print(f'fq: {fq}')
+                #print(f'Soil weight - helix 1: {dr.soil_weight}')
+                #print(f'Soil weight - helix 2: {wt2}')
+                #print(f'Soil weight - helix 3: {wt3}')
 
                 break
         # (for deapth records)
