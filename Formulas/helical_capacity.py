@@ -515,11 +515,8 @@ def calculate_pile_length(helices, Project):
 
                 print(f'q: {q}')
 
-                # plot the pile below grade as d
-                print(f'plot pile below grade: {d}')
-
                 # specify total settlement (ts) at the bottom
-                #print(f'Total settlement: {ts}')
+                print(f'Total settlement: {ts}')
 
                 #print(f'helix flex: {helix_flex}')
                 #print(f'helix_tip: {helix_tip}')
@@ -528,6 +525,9 @@ def calculate_pile_length(helices, Project):
                 #print(f'Soil weight - helix 1: {dr.soil_weight}')
                 #print(f'Soil weight - helix 2: {wt2}')
                 #print(f'Soil weight - helix 3: {wt3}')
+
+                # plot the pile below grade as d
+                print(f'plot pile below grade: {d}')
 
                 break
         # (for deapth records)
